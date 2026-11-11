@@ -1,0 +1,86 @@
+﻿@page "/"
+@using System.Net.Http.Json
+@using SearchNarutoAPI.Models
+@inject HttpClient Http
+
+<PageTitle>Personagens - Naruto</PageTitle>
+
+<h1>Personagens do Universo Naruto</h1>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="CarregarPersonagens" disabled="@carregando">
+        @(carregando ? "A carregar..." : "Carregar Personagens")
+    </button>
+</div>
+
+@if (!string.IsNullOrEmpty(mensagemErro))
+{
+    <div class="alert alert-danger mt-3">@mensagemErro</div>
+}
+
+@if (personagens != null && personagens.Any())
+{
+    <div class="row mt-4">
+        @foreach (var c in personagens)
+        {
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    @if (c.images != null && c.images.Any())
+                    {
+                        <img src="@c.images[0]" class="card-img-top" alt="@c.name" style="max-height: 250px; object-fit: cover;" />
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@c.name</h5>
+                        <p class="card-text"><strong>Clã/Afiliação:</strong> @(c.personal?.clan ?? "Desconhecido")</p>
+                        <p class="card-text"><strong>Patente Ninja:</strong> @(c.rank?.ninjaRank ?? "Desconhecido")</p>
+                        
+                        @if (c.jutsu != null && c.jutsu.Any())
+                        {
+                            <p class="card-text"><strong>Jutsus:</strong> @string.Join(", ", c.jutsu.Take(5))</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<NarutoCharacter>? personagens;
+    private string mensagemErro = string.Empty;
+    private bool carregando = false;
+
+    private async Task CarregarPersonagens()
+    {
+        mensagemErro = string.Empty;
+        personagens = null;
+
+        try
+        {
+            carregando = true;
+            // Tenta carregar diretamente como lista ou através do objeto com a propriedade characters
+            try
+            {
+                personagens = await Http.GetFromJsonAsync<List<NarutoCharacter>>("characters");
+            }
+            catch
+            {
+                var resposta = await Http.GetFromJsonAsync<NarutoResponse>("characters");
+                personagens = resposta?.characters;
+            }
+            
+            if (personagens == null || !personagens.Any())
+            {
+                mensagemErro = "Nenhum personagem encontrado.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = $"Erro ao consultar a API: {ex.Message}";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+}
